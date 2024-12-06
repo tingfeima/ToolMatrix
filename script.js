@@ -73,23 +73,57 @@ document.addEventListener('DOMContentLoaded', function() {
             const img = new Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
+                
+                // 计算压缩后的尺寸
+                let width = img.width;
+                let height = img.height;
+                
+                // 如果图片尺寸大于 1200px，按比例缩小
+                const maxSize = 1200;
+                if (width > maxSize || height > maxSize) {
+                    if (width > height) {
+                        height = Math.round((height * maxSize) / width);
+                        width = maxSize;
+                    } else {
+                        width = Math.round((width * maxSize) / height);
+                        height = maxSize;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
                 
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
                 
+                // 使用更好的图像平滑算法
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                
+                // 绘制图像
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // 转换为 blob，使用更优化的压缩参数
                 canvas.toBlob((blob) => {
-                    compressedImage.src = URL.createObjectURL(blob);
-                    compressedSize.textContent = formatFileSize(blob.size);
-                    
-                    // 更新下载按钮
-                    downloadBtn.onclick = () => {
-                        const link = document.createElement('a');
-                        link.href = URL.createObjectURL(blob);
-                        link.download = `compressed_${file.name}`;
-                        link.click();
-                    };
+                    // 如果压缩后的大小反而更大，就使用原图
+                    if (blob.size >= file.size) {
+                        compressedImage.src = URL.createObjectURL(file);
+                        compressedSize.textContent = formatFileSize(file.size);
+                        downloadBtn.onclick = () => {
+                            const link = document.createElement('a');
+                            link.href = URL.createObjectURL(file);
+                            link.download = `compressed_${file.name}`;
+                            link.click();
+                        };
+                    } else {
+                        compressedImage.src = URL.createObjectURL(blob);
+                        compressedSize.textContent = formatFileSize(blob.size);
+                        downloadBtn.onclick = () => {
+                            const link = document.createElement('a');
+                            link.href = URL.createObjectURL(blob);
+                            link.download = `compressed_${file.name}`;
+                            link.click();
+                        };
+                    }
                 }, file.type, quality);
             };
             img.src = e.target.result;
